@@ -33,9 +33,9 @@ typedef struct {
     Vector2Int head;
     Vector2Int tail;
     Vector2Int parts[ROWS * COLS];
-    int length;
-    int curHeadIndex;
-    int curTailIndex;
+    unsigned int length;
+    unsigned int curHeadIndex;
+    unsigned int curTailIndex;
     Direction dir;
 } Snake;
 
@@ -43,11 +43,10 @@ typedef struct {
 static Snake snake;
 static Vector2Int apple;
 static bool gameOver = false;
-static bool paused = false;
-static bool allowMove = false;
-static int frameCounter = 0;
-
-static char text[50];
+static bool allowMove = true;
+static unsigned int frameCounter = 0;
+static Sound fxCollectApple = { 0 };
+static Font font = { 0 };
 
 // Declare functions
 void InitSnake(void);
@@ -62,93 +61,37 @@ void InitGame(void);
 void UpdateDrawFrame(void);
 void UpdateGame(void);
 void DrawGame(void);
-bool hasTicked(const float tickDuration);
 
 
 int main(void) {
     InitWindow(2 * OFFSET + 2 * BORDER_LINE_WIDTH + COLS * CELL_SIZE, 2 * OFFSET + 2 * BORDER_LINE_WIDTH + ROWS * CELL_SIZE, "Snake");
     SetTargetFPS(TARGET_FPS);
 
+    InitAudioDevice();
+    fxCollectApple = LoadSound("resources/collectApple.wav");
+    font = LoadFont("resources/SG08.ttf");
+
     InitGame();
 
-
     while (!WindowShouldClose()) {
-        UpdateDirection();
-        if (snake.dir != NONE) {
-            UpdateDrawFrame();
-        }
+        UpdateDrawFrame();
     }
 
+    UnloadFont(font);
+    UnloadSound(fxCollectApple);
+    CloseAudioDevice();
     CloseWindow();
 
     return 0;
 }
 
 
-bool hasTicked(const float tickDuration) {
-    float time = floorf((float)GetTime() / tickDuration);
-    static float currentTime = 0;
-    if (currentTime != time)
-    {
-        currentTime = time;
-        return true;
-    }
-    return false;
-}
-
-
 void InitGame(void) {
     frameCounter = 0;
     gameOver = false;
-    allowMove = false;
+    allowMove = true;
     InitSnake();
     GenerateNewApple();
-}
-
-// Draw 1 frame
-void UpdateDrawFrame(void) {
-    UpdateGame();
-    DrawGame();
-    frameCounter++;
-}
-
-
-void UpdateGame(void) {
-    UpdateSnake();
-    
-    if (GameEnded()) {
-        gameOver = true;
-        return;
-    }
-
-
-}
-
-// 1 frame
-void DrawGame(void) {
-    BeginDrawing(); 
-    
-    sprintf(text, "HEAD: %d %d\nLENGTH: %d\nGAMEOVER: %d", snake.head.x, snake.head.y, snake.length, 0x1 & gameOver);
-    DrawText(text, 10, 10, 20, BLACK);
-
-    ClearBackground((Color) {150, 190, 37});
-    DrawRectangleLinesEx((Rectangle) {OFFSET - BORDER_LINE_WIDTH, OFFSET - BORDER_LINE_WIDTH, COLS * CELL_SIZE + 2 * BORDER_LINE_WIDTH, ROWS * CELL_SIZE + 2 * BORDER_LINE_WIDTH}, 4, BLACK);
-
-    // Draw apple
-    DrawRectangleRounded((Rectangle) {OFFSET + apple.x * CELL_SIZE + (float) (CELL_SIZE - APPLE_SIZE) / 2, 
-                                        OFFSET + apple.y * CELL_SIZE  + (float) (CELL_SIZE - APPLE_SIZE) / 2, APPLE_SIZE, APPLE_SIZE}, 0.5, 6, MAROON);
-
-    // Draw snake
-    for (int i = 0; i < snake.length; ++i) {
-        if (snake.length % 2 == i % 2)
-            DrawRectangleRounded((Rectangle) {OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].x * CELL_SIZE, 
-                                                OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].y * CELL_SIZE, CELL_SIZE, CELL_SIZE}, 0.5, 6, BLUE);
-        else
-            DrawRectangleRounded((Rectangle) {OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].x * CELL_SIZE, 
-                                                OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].y * CELL_SIZE, CELL_SIZE, CELL_SIZE}, 0.5, 6, DARKBLUE);
-    }
-
-    EndDrawing();
 }
 
 
@@ -160,7 +103,60 @@ void InitSnake(void) {
     snake.parts[0] = snake.head;
     snake.curHeadIndex = 0;
     snake.curTailIndex = 0;
-    snake.dir = RIGHT;
+    snake.dir = NONE;
+}
+
+
+// Draw 1 frame
+void UpdateDrawFrame(void) {
+    if (!gameOver) {
+        UpdateDirection();
+        if (snake.dir != NONE) {
+            UpdateSnake();
+        }
+    } else {
+        if (IsKeyPressed(KEY_ENTER)) {
+            InitGame();
+        }
+    }
+    
+    gameOver = GameEnded();
+    DrawGame();
+    frameCounter++;
+}
+
+
+// 1 frame
+void DrawGame(void) {
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    
+    if (!gameOver){
+        DrawTextEx(font, TextFormat("SCORE: %d", snake.length - 1), (Vector2) {10, 10}, 24, 2, BLACK);
+
+        DrawRectangleLinesEx((Rectangle) {OFFSET - BORDER_LINE_WIDTH, OFFSET - BORDER_LINE_WIDTH, 
+                                            COLS * CELL_SIZE + 2 * BORDER_LINE_WIDTH, ROWS * CELL_SIZE + 2 * BORDER_LINE_WIDTH}, 4, BLACK);
+
+        // Draw apple
+        DrawRectangleRounded((Rectangle) {OFFSET + apple.x * CELL_SIZE + (float) (CELL_SIZE - APPLE_SIZE) / 2, 
+                                            OFFSET + apple.y * CELL_SIZE  + (float) (CELL_SIZE - APPLE_SIZE) / 2, APPLE_SIZE, APPLE_SIZE}, 0.8, 8, MAROON);
+
+        // Draw snake
+        for (int i = 0; i < snake.length; ++i) {
+            if (snake.length % 2 == i % 2)
+                DrawRectangleRounded((Rectangle) {OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].x * CELL_SIZE, 
+                                                    OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].y * CELL_SIZE, CELL_SIZE, CELL_SIZE}, 0.6, 8, GREEN);
+            else
+                DrawRectangleRounded((Rectangle) {OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].x * CELL_SIZE, 
+                                                    OFFSET + snake.parts[(snake.curTailIndex + i) % (ROWS * COLS)].y * CELL_SIZE, CELL_SIZE, CELL_SIZE}, 0.6, 8, DARKGREEN);
+        }
+    } else {
+        DrawTextEx(font, "GAME OVER", (Vector2) {GetScreenWidth() / 2 - MeasureTextEx(font, "GAME OVER", 30, 2).x / 2, GetScreenHeight() / 2 - 60}, 30, 2, BLACK);
+        DrawTextEx(font, TextFormat("SCORE: %03i", snake.length - 1), (Vector2) {GetScreenWidth() / 2 - MeasureTextEx(font, "SCORE: 000", 26, 2).x / 2, GetScreenHeight() / 2 - 35}, 26, 2, BLACK);
+        DrawTextEx(font, "Press [Enter] to play again.", (Vector2) {GetScreenWidth() / 2 - MeasureTextEx(font, "Press [Enter] to play again.", 26, 1).x / 2, GetScreenHeight() / 2}, 26, 1, DARKGREEN);
+    }
+
+    EndDrawing();
 }
 
 
@@ -193,6 +189,7 @@ void UpdateSnake(void) {
         snake.tail = snake.parts[snake.curTailIndex];
     } else {
         snake.length++;
+        PlaySound(fxCollectApple);
         GenerateNewApple();
     }
     allowMove = true;
