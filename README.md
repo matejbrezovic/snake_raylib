@@ -1,1 +1,2 @@
-# snake_raylib
+# Snake in C using Raylib
+

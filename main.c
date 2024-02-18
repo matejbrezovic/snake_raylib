@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <string.h>
 #include <stdbool.h>
 #include "raylib.h"
 
@@ -228,8 +226,8 @@ bool HasSnakeCollidedWithApple(void) {
 
 
 bool GameEnded(void) {
-    return (snake.head.x < 0 || snake.head.x > COLS ||
-            snake.head.y < 0 || snake.head.y > ROWS ||
+    return (snake.head.x < 0 || snake.head.x >= COLS ||
+            snake.head.y < 0 || snake.head.y >= ROWS ||
             HasSnakeCollidedWithItself());
 }
 
