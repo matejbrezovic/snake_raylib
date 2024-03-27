@@ -3,11 +3,11 @@
 #include <stdbool.h>
 #include "raylib.h"
 
-#define ROWS 30
-#define COLS 30
+#define ROWS 15
+#define COLS 15
 #define OFFSET 70
 #define BORDER_LINE_WIDTH 4
-#define CELL_SIZE 20
+#define CELL_SIZE 30
 #define APPLE_SIZE 14
 #define TARGET_FPS 60
 
@@ -67,7 +67,7 @@ int main(void) {
 
     InitAudioDevice();
     fxCollectApple = LoadSound("resources/collectApple.wav");
-    font = LoadFont("resources/SG08.ttf");
+    font = LoadFont("resources/SuperLegendBoy.ttf");
 
     InitGame();
 
